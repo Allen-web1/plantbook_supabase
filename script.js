@@ -486,8 +486,14 @@ const plantFormMessage =
   const finalRecordPanel =
   document.getElementById("finalRecordPanel");
 
-const referencesInput =
-  document.getElementById("references");
+const selectionReasonInput =
+  document.getElementById("selectionReason");
+
+const inquiryPlantInput =
+  document.getElementById("inquiryPlant");
+
+const inquiryTopicInput =
+  document.getElementById("inquiryTopic");
 
 const reflectionInput =
   document.getElementById("reflection");
@@ -501,7 +507,7 @@ createFinalRecordTab();
 showSpecies(0);
 updateSpeciesProgress();
 
-// 참고자료 및 느낀 점 탭 생성
+// 마무리 작성 탭 생성
 function createFinalRecordTab() {
   const finalTab =
     document.createElement("button");
@@ -691,6 +697,21 @@ function createSpeciesForms() {
             rows="6"
             maxlength="1500"
             placeholder="관찰한 식물의 형태와 특징을 구체적으로 작성해주세요."
+            data-species-required="true"
+          ></textarea>
+        </div>
+      </fieldset>
+
+      <fieldset class="form-section">
+        <legend>9. 참고자료 및 출처</legend>
+
+        <div class="form-group">
+          <textarea
+            id="species${speciesNumber}References"
+            name="species${speciesNumber}References"
+            rows="4"
+            maxlength="1000"
+            placeholder="이 식물을 조사할 때 참고한 도서명, 웹사이트 주소 및 자료의 출처를 작성해주세요."
             data-species-required="true"
           ></textarea>
         </div>
@@ -1003,15 +1024,23 @@ function updateSpeciesProgress() {
   speciesProgressBar.style.width =
     `${(completedSpeciesCount / speciesCount) * 100}%`;
 
-  // 참고자료와 느낀 점 작성 여부
-  const referencesCompleted =
-    referencesInput.value.trim() !== "";
+  // 마무리 작성 4개 문항 작성 여부
+  const selectionReasonCompleted =
+    selectionReasonInput.value.trim() !== "";
+
+  const inquiryPlantCompleted =
+    inquiryPlantInput.value.trim() !== "";
+
+  const inquiryTopicCompleted =
+    inquiryTopicInput.value.trim() !== "";
 
   const reflectionCompleted =
     reflectionInput.value.trim() !== "";
 
   const finalRecordCompleted =
-    referencesCompleted &&
+    selectionReasonCompleted &&
+    inquiryPlantCompleted &&
+    inquiryTopicCompleted &&
     reflectionCompleted;
 
   // 마무리 작성 탭 상태
@@ -1113,6 +1142,11 @@ plantRecordForm.addEventListener(
         features:
           document.getElementById(
             `species${speciesNumber}Features`
+          ).value.trim(),
+
+        references:
+          document.getElementById(
+            `species${speciesNumber}References`
           ).value.trim()
       });
     }
@@ -1125,14 +1159,19 @@ plantRecordForm.addEventListener(
           plant.discoveryDate &&
           plant.discoveryPlace &&
           plant.habitat &&
-          plant.features
+          plant.features &&
+          plant.references
         );
       }).length;
 
     const everythingCompleted =
       completedPlantCount ===
         speciesCount &&
-      referencesInput.value.trim() !==
+      selectionReasonInput.value.trim() !==
+        "" &&
+      inquiryPlantInput.value.trim() !==
+        "" &&
+      inquiryTopicInput.value.trim() !==
         "" &&
       reflectionInput.value.trim() !==
         "";
@@ -1162,8 +1201,14 @@ plantRecordForm.addEventListener(
       sessionToken:
         currentStudentToken,
 
-      references:
-        referencesInput.value.trim(),
+      selectionReason:
+        selectionReasonInput.value.trim(),
+
+      inquiryPlant:
+        inquiryPlantInput.value.trim(),
+
+      inquiryTopic:
+        inquiryTopicInput.value.trim(),
 
       reflection:
         reflectionInput.value.trim(),
@@ -1634,8 +1679,11 @@ async function downloadTeacherCsv() {
       ["discoveryPlace", "발견장소"],
       ["habitat", "서식환경"],
       ["features", "식물특징"],
+      ["references", "식물별참고자료및출처"],
       ["plantStatus", "식물작성상태"],
-      ["references", "참고자료및출처"],
+      ["selectionReason", "5종식물선택이유"],
+      ["inquiryPlant", "탐구하고싶은식물"],
+      ["inquiryTopic", "탐구주제"],
       ["reflection", "느낀점"],
       ["submissionStatus", "전체작성상태"],
       ["visibility", "공개상태"],
@@ -2296,9 +2344,19 @@ const myPlantRecordsGrid =
     "myPlantRecordsGrid"
   );
 
-const myReferencesContent =
+const mySelectionReasonContent =
   document.getElementById(
-    "myReferencesContent"
+    "mySelectionReasonContent"
+  );
+
+const myInquiryPlantContent =
+  document.getElementById(
+    "myInquiryPlantContent"
+  );
+
+const myInquiryTopicContent =
+  document.getElementById(
+    "myInquiryTopicContent"
   );
 
 const myReflectionContent =
@@ -2356,7 +2414,7 @@ editCommonRecordButton.addEventListener(
       behavior: "smooth"
     });
 
-    referencesInput.focus();
+    selectionReasonInput.focus();
   }
 );
 
@@ -2554,15 +2612,29 @@ function renderMyRecords() {
       "저장 기록 없음";
   }
 
-  // 공통 기록
-  const references =
-    referencesInput.value.trim();
+  // 마무리 작성
+  const selectionReason =
+    selectionReasonInput.value.trim();
+
+  const inquiryPlant =
+    inquiryPlantInput.value.trim();
+
+  const inquiryTopic =
+    inquiryTopicInput.value.trim();
 
   const reflection =
     reflectionInput.value.trim();
 
-  myReferencesContent.textContent =
-    references ||
+  mySelectionReasonContent.textContent =
+    selectionReason ||
+    "아직 작성되지 않았습니다.";
+
+  myInquiryPlantContent.textContent =
+    inquiryPlant ||
+    "아직 작성되지 않았습니다.";
+
+  myInquiryTopicContent.textContent =
+    inquiryTopic ||
     "아직 작성되지 않았습니다.";
 
   myReflectionContent.textContent =
@@ -2570,7 +2642,9 @@ function renderMyRecords() {
     "아직 작성되지 않았습니다.";
 
   const commonRecordCompleted =
-    references !== "" &&
+    selectionReason !== "" &&
+    inquiryPlant !== "" &&
+    inquiryTopic !== "" &&
     reflection !== "";
 
   const completedSteps =
@@ -3037,6 +3111,11 @@ async function loadMySubmissionFromServer() {
         `species${speciesNumber}Features`,
         plant.features
       );
+
+      setInputValue_(
+        `species${speciesNumber}References`,
+        plant.references
+      );
     });
 
     // Supabase Storage에 저장된 사진 불러오기
@@ -3078,9 +3157,15 @@ async function loadMySubmissionFromServer() {
   });
 }
 
-    // 참고자료와 느낀 점 입력
-    referencesInput.value =
-      result.submission.references || "";
+    // 마무리 작성 입력
+    selectionReasonInput.value =
+      result.submission.selectionReason || "";
+
+    inquiryPlantInput.value =
+      result.submission.inquiryPlant || "";
+
+    inquiryTopicInput.value =
+      result.submission.inquiryTopic || "";
 
     reflectionInput.value =
       result.submission.reflection || "";
@@ -4018,9 +4103,19 @@ const teacherSubmissionPlantContent =
     "teacherSubmissionPlantContent"
   );
 
-const teacherSubmissionReferences =
+const teacherSubmissionSelectionReason =
   document.getElementById(
-    "teacherSubmissionReferences"
+    "teacherSubmissionSelectionReason"
+  );
+
+const teacherSubmissionInquiryPlant =
+  document.getElementById(
+    "teacherSubmissionInquiryPlant"
+  );
+
+const teacherSubmissionInquiryTopic =
+  document.getElementById(
+    "teacherSubmissionInquiryTopic"
   );
 
 const teacherSubmissionReflection =
@@ -4164,8 +4259,16 @@ function renderTeacherSubmissionDetail() {
       submission.updatedAt
     );
 
-  teacherSubmissionReferences.textContent =
-    submission.references ||
+  teacherSubmissionSelectionReason.textContent =
+    submission.selectionReason ||
+    "아직 작성되지 않았습니다.";
+
+  teacherSubmissionInquiryPlant.textContent =
+    submission.inquiryPlant ||
+    "아직 작성되지 않았습니다.";
+
+  teacherSubmissionInquiryTopic.textContent =
+    submission.inquiryTopic ||
     "아직 작성되지 않았습니다.";
 
   teacherSubmissionReflection.textContent =
@@ -4254,6 +4357,7 @@ function showTeacherPlantDetail(
       discoveryPlace: "",
       habitat: "",
       features: "",
+      references: "",
       status: "작성중"
     };
 
@@ -4363,6 +4467,12 @@ function showTeacherPlantDetail(
       ${createTeacherDetailInfo(
         "식물 특징",
         plant.features || "미작성",
+        true
+      )}
+
+      ${createTeacherDetailInfo(
+        "참고자료 및 출처",
+        plant.references || "미작성",
         true
       )}
     </div>
