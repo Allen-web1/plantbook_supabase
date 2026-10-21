@@ -501,6 +501,9 @@ const reflectionInput =
 const submitPlantButton =
   document.getElementById("submitPlantButton");
 
+const savePdfButton =
+  document.getElementById("savePdfButton");
+
 // 식물 1~5 입력란 생성
 createSpeciesForms();
 createFinalRecordTab();
@@ -907,6 +910,11 @@ function showSpecies(index) {
   // 식물 1~5에서는 오른쪽의 저장 후 다음 버튼을 사용하고,
   // 마무리 작성 화면에서만 최종 제출 버튼을 표시한다.
   submitPlantButton.classList.toggle(
+    "hidden",
+    index !== speciesCount
+  );
+
+  savePdfButton.classList.toggle(
     "hidden",
     index !== speciesCount
   );
@@ -1466,6 +1474,334 @@ plantRecordForm.addEventListener(
       submitPlantButton.disabled = false;
       submitPlantButton.textContent =
         originalButtonText;
+    }
+  }
+);
+
+// 보고서에 입력값을 안전하게 표시
+function escapeReportHtml(value) {
+  return String(value == null ? "" : value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function getReportPhotoUrl(
+  speciesNumber,
+  photoType
+) {
+  const photo =
+    savedPhotoMap.get(
+      getSavedPhotoKey(
+        speciesNumber,
+        photoType
+      )
+    );
+
+  return photo && photo.photoUrl
+    ? String(photo.photoUrl)
+    : "";
+}
+
+function isPdfReportReady() {
+  const plants =
+    collectPlantRecords();
+
+  const allPlantTextCompleted =
+    plants.every(function (plant) {
+      return Boolean(
+        plant.koreanName &&
+        plant.scientificName &&
+        plant.discoveryDate &&
+        plant.discoveryPlace &&
+        plant.habitat &&
+        plant.features &&
+        plant.references
+      );
+    });
+
+  const allPhotosSaved =
+    plants.every(function (plant) {
+      return ["Leaf", "Stem", "Whole"].every(
+        function (photoType) {
+          return Boolean(
+            getReportPhotoUrl(
+              plant.speciesNumber,
+              photoType
+            )
+          );
+        }
+      );
+    });
+
+  const finalRecordCompleted =
+    Boolean(
+      selectionReasonInput.value.trim() &&
+      inquiryPlantInput.value.trim() &&
+      inquiryTopicInput.value.trim() &&
+      reflectionInput.value.trim()
+    );
+
+  return (
+    allPlantTextCompleted &&
+    allPhotosSaved &&
+    finalRecordCompleted &&
+    countSelectedPhotos() === 0
+  );
+}
+
+function createReportPhotoHtml(
+  speciesNumber,
+  photoType,
+  label
+) {
+  const photoUrl =
+    getReportPhotoUrl(
+      speciesNumber,
+      photoType
+    );
+
+  return (
+    '<figure class="photo-item">' +
+      '<img src="' +
+        escapeReportHtml(photoUrl) +
+        '" alt="' +
+        escapeReportHtml(label) +
+        '">' +
+      '<figcaption>' +
+        escapeReportHtml(label) +
+      '</figcaption>' +
+    '</figure>'
+  );
+}
+
+function createPlantReportSection(plant) {
+  const speciesNumber =
+    Number(plant.speciesNumber);
+
+  return (
+    '<section class="plant-section">' +
+      '<h2>식물 ' +
+        speciesNumber +
+        '. ' +
+        escapeReportHtml(plant.koreanName) +
+      '</h2>' +
+      '<table>' +
+        '<tr><th>국명</th><td>' +
+          escapeReportHtml(plant.koreanName) +
+        '</td></tr>' +
+        '<tr><th>학명</th><td><i>' +
+          escapeReportHtml(plant.scientificName) +
+        '</i></td></tr>' +
+        '<tr><th>발견 날짜</th><td>' +
+          escapeReportHtml(plant.discoveryDate) +
+        '</td></tr>' +
+        '<tr><th>발견 장소</th><td>' +
+          escapeReportHtml(plant.discoveryPlace) +
+        '</td></tr>' +
+        '<tr><th>서식 환경</th><td>' +
+          escapeReportHtml(plant.habitat) +
+        '</td></tr>' +
+        '<tr><th>식물 특징</th><td>' +
+          escapeReportHtml(plant.features) +
+        '</td></tr>' +
+        '<tr><th>참고자료 및 출처</th><td>' +
+          escapeReportHtml(plant.references) +
+        '</td></tr>' +
+      '</table>' +
+      '<div class="photo-grid">' +
+        createReportPhotoHtml(
+          speciesNumber,
+          "Leaf",
+          "잎 사진"
+        ) +
+        createReportPhotoHtml(
+          speciesNumber,
+          "Stem",
+          "줄기 사진"
+        ) +
+        createReportPhotoHtml(
+          speciesNumber,
+          "Whole",
+          "식물 전체 사진"
+        ) +
+      '</div>' +
+    '</section>'
+  );
+}
+
+function createPlantReportHtml() {
+  const plants =
+    collectPlantRecords();
+
+  const plantSections =
+    plants.map(
+      createPlantReportSection
+    ).join("");
+
+  const studentNumber =
+    currentStudent
+      ? currentStudent.studentNumber
+      : "";
+
+  const studentName =
+    currentStudent
+      ? currentStudent.studentName
+      : "";
+
+  const reportTitle =
+    "식물도감_보고서_" +
+    studentNumber +
+    "_" +
+    studentName;
+
+  return (
+    '<!doctype html>' +
+    '<html lang="ko">' +
+    '<head>' +
+      '<meta charset="utf-8">' +
+      '<meta name="viewport" content="width=device-width, initial-scale=1">' +
+      '<title>' +
+        escapeReportHtml(reportTitle) +
+      '</title>' +
+      '<style>' +
+        '@page{size:A4;margin:14mm;}' +
+        '*{box-sizing:border-box;}' +
+        'body{margin:0;color:#202820;font-family:"Malgun Gothic","Apple SD Gothic Neo",sans-serif;font-size:11pt;line-height:1.55;}' +
+        'h1{text-align:center;color:#176b38;font-size:25pt;margin:0 0 12px;}' +
+        '.student-info{text-align:center;border-top:2px solid #238647;border-bottom:2px solid #238647;padding:10px;margin-bottom:20px;font-size:13pt;font-weight:700;}' +
+        '.plant-section{break-before:page;page-break-before:always;}' +
+        '.plant-section:first-of-type{break-before:auto;page-break-before:auto;}' +
+        'h2{color:#176b38;font-size:18pt;margin:0 0 10px;}' +
+        'table{width:100%;border-collapse:collapse;margin-bottom:12px;table-layout:fixed;}' +
+        'th,td{border:1px solid #aebdb2;padding:7px 9px;vertical-align:top;white-space:pre-wrap;overflow-wrap:anywhere;}' +
+        'th{width:22%;background:#edf6ef;text-align:left;}' +
+        '.photo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;break-inside:avoid;}' +
+        '.photo-item{margin:0;border:1px solid #c8d5cb;border-radius:6px;overflow:hidden;}' +
+        '.photo-item img{display:block;width:100%;height:155px;object-fit:cover;}' +
+        '.photo-item figcaption{text-align:center;padding:5px;background:#f4f8f5;font-weight:700;}' +
+        '.final-section{break-before:page;page-break-before:always;}' +
+        '.answer{margin:0 0 14px;padding:10px 12px;border:1px solid #c8d5cb;border-radius:7px;white-space:pre-wrap;}' +
+        '.question{display:block;color:#176b38;font-weight:700;margin-bottom:5px;}' +
+        '@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}}' +
+      '</style>' +
+    '</head>' +
+    '<body>' +
+      '<h1>식물도감 보고서</h1>' +
+      '<div class="student-info">학번: ' +
+        escapeReportHtml(studentNumber) +
+        ' &nbsp;&nbsp; 이름: ' +
+        escapeReportHtml(studentName) +
+      '</div>' +
+      plantSections +
+      '<section class="final-section">' +
+        '<h2>마무리 작성</h2>' +
+        '<div class="answer"><span class="question">1. 5종의 식물을 선택한 이유</span>' +
+          escapeReportHtml(selectionReasonInput.value.trim()) +
+        '</div>' +
+        '<div class="answer"><span class="question">2. 탐구하고 싶은 식물</span>' +
+          escapeReportHtml(inquiryPlantInput.value.trim()) +
+        '</div>' +
+        '<div class="answer"><span class="question">3. 탐구하고 싶은 주제</span>' +
+          escapeReportHtml(inquiryTopicInput.value.trim()) +
+        '</div>' +
+        '<div class="answer"><span class="question">4. 활동을 하면서 느낀 점</span>' +
+          escapeReportHtml(reflectionInput.value.trim()) +
+        '</div>' +
+      '</section>' +
+    '</body>' +
+    '</html>'
+  );
+}
+
+savePdfButton.addEventListener(
+  "click",
+  function () {
+    if (!currentStudent) {
+      window.alert(
+        "학생 로그인 정보를 확인할 수 없습니다. 다시 로그인해주세요."
+      );
+      return;
+    }
+
+    if (!isPdfReportReady()) {
+      window.alert(
+        "식물 5종의 내용과 사진을 모두 저장하고 마무리 작성 4개 항목을 완성한 뒤 PDF를 저장해주세요."
+      );
+      return;
+    }
+
+    const reportWindow =
+      window.open(
+        "",
+        "_blank",
+        "noopener=no"
+      );
+
+    if (!reportWindow) {
+      window.alert(
+        "PDF 화면을 열 수 없습니다. 브라우저의 팝업 차단을 허용해주세요."
+      );
+      return;
+    }
+
+    reportWindow.document.open();
+    reportWindow.document.write(
+      createPlantReportHtml()
+    );
+    reportWindow.document.close();
+
+    const printWhenReady =
+      function () {
+        const images =
+          Array.from(
+            reportWindow.document.images
+          );
+
+        const imageWaiters =
+          images.map(function (image) {
+            if (image.complete) {
+              return Promise.resolve();
+            }
+
+            return new Promise(function (resolve) {
+              image.addEventListener(
+                "load",
+                resolve,
+                { once: true }
+              );
+              image.addEventListener(
+                "error",
+                resolve,
+                { once: true }
+              );
+            });
+          });
+
+        Promise.race([
+          Promise.all(imageWaiters),
+          new Promise(function (resolve) {
+            window.setTimeout(resolve, 5000);
+          })
+        ]).then(function () {
+          reportWindow.focus();
+          reportWindow.print();
+        });
+      };
+
+    if (
+      reportWindow.document.readyState ===
+      "complete"
+    ) {
+      printWhenReady();
+    } else {
+      reportWindow.addEventListener(
+        "load",
+        printWhenReady,
+        { once: true }
+      );
     }
   }
 );
