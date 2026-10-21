@@ -1,0 +1,2 @@
+[functions.plant-guide-api]
+verify_jwt = false
