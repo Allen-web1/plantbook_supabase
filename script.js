@@ -1249,9 +1249,6 @@ plantRecordForm.addEventListener(
           ? new Date(result.savedAt)
           : new Date();
 
-      plantFormHasUnsavedChanges = false;
-      clearLocalPlantDraft();
-
       const selectedPhotoCount =
         countSelectedPhotos();
 
@@ -1279,14 +1276,23 @@ plantRecordForm.addEventListener(
         }
       }
 
+      // 글과 선택한 사진이 모두 저장된 뒤에만
+      // 최종 저장 완료 상태로 전환한다.
+      plantFormHasUnsavedChanges = false;
+      clearLocalPlantDraft();
+
       showMessage(
         plantFormMessage,
-        "현재 작성 내용이 저장되었습니다.",
+        selectedPhotoCount > 0
+          ? "내용과 사진이 모두 저장되었습니다."
+          : "내용이 저장되었습니다.",
         "success"
       );
 
       window.alert(
-        "현재 작성 내용이 저장되었습니다. 나중에 다시 로그인해 이어서 작성할 수 있습니다."
+        selectedPhotoCount > 0
+          ? "내용과 사진이 모두 저장되었습니다."
+          : "내용이 저장되었습니다."
       );
 
       updateSpeciesProgress();
@@ -1294,14 +1300,20 @@ plantRecordForm.addEventListener(
       console.error(error);
 
       if (textSaved) {
+        // 사진 업로드가 끝나지 않은 경우에는 작성 중 상태와
+        // 브라우저 임시 저장을 유지한다. 다시 저장하면 이미
+        // 성공한 사진은 건너뛰고 남은 사진만 이어서 업로드한다.
+        plantFormHasUnsavedChanges = true;
+        saveLocalPlantDraft();
+
         showMessage(
           plantFormMessage,
-          "작성 내용은 저장되었습니다. 일부 사진은 저장되지 않았을 수 있으니 확인 후 다시 제출해주세요.",
+          "저장이 완료되지 않았습니다. 저장 버튼을 다시 눌러주세요.",
           "error"
         );
 
         window.alert(
-          "작성한 글은 안전하게 저장되었습니다. 사진 업로드가 완료되지 않았으므로 잠시 후 다시 제출해주세요."
+          "저장이 완료되지 않았습니다. 인터넷 연결을 확인한 뒤 저장 버튼을 다시 눌러주세요."
         );
       } else {
         showMessage(
