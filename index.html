@@ -244,7 +244,7 @@
       </button>
     </div>
 
-    <!-- 5종 공통 작성 영역 -->
+    <!-- 마무리 작성 영역 -->
     <section
   id="finalRecordPanel"
   class="common-record-section hidden"
@@ -253,7 +253,7 @@
         <span>📚</span>
 
         <div>
-          <h3>5종 공통 탐구 기록</h3>
+          <h3>마무리 작성</h3>
           <p>
             다섯 식물을 모두 조사한 뒤 마지막으로 작성해주세요.
           </p>
@@ -261,24 +261,56 @@
       </div>
 
       <div class="form-group">
-        <label for="references">
-          참고자료 및 출처
+        <label for="selectionReason">
+          1. 5종의 식물을 선택한 이유를 쓰시오.
           <span class="required-mark">*</span>
         </label>
 
         <textarea
-          id="references"
-          name="references"
+          id="selectionReason"
+          name="selectionReason"
           rows="5"
-          maxlength="2000"
-          placeholder="5종을 조사할 때 참고한 도서명, 웹사이트 주소 및 자료의 출처를 작성해주세요."
+          maxlength="1500"
+          placeholder="다섯 식물을 선택한 이유를 구체적으로 작성해주세요."
+          required
+        ></textarea>
+      </div>
+
+      <div class="form-group">
+        <label for="inquiryPlant">
+          2. 만약 5종의 식물 중 하나를 선택해서 탐구를 한다면 어떤 식물을 선택하고 싶은지 쓰시오.
+          <span class="required-mark">*</span>
+        </label>
+
+        <textarea
+          id="inquiryPlant"
+          name="inquiryPlant"
+          rows="4"
+          maxlength="1000"
+          placeholder="탐구하고 싶은 식물과 선택한 이유를 작성해주세요."
+          required
+        ></textarea>
+      </div>
+
+      <div class="form-group">
+        <label for="inquiryTopic">
+          3. 2번에서 식물을 선택했다면 어떤 주제로 탐구를 하고 싶은지 탐구 주제를 쓰시오.
+          <span class="required-mark">*</span>
+        </label>
+
+        <textarea
+          id="inquiryTopic"
+          name="inquiryTopic"
+          rows="4"
+          maxlength="1000"
+          placeholder="선택한 식물로 탐구하고 싶은 구체적인 주제를 작성해주세요."
           required
         ></textarea>
       </div>
 
       <div class="form-group common-reflection">
         <label for="reflection">
-          느낀 점
+          4. 활동을 하면서 느낀점을 쓰시오.
           <span class="required-mark">*</span>
         </label>
 
@@ -287,7 +319,7 @@
           name="reflection"
           rows="6"
           maxlength="1500"
-          placeholder="5종의 식물을 관찰하고 비교하면서 새롭게 알게 된 점과 느낀 점을 6줄 이상 작성해주세요."
+          placeholder="식물도감 활동을 하면서 새롭게 알게 된 점과 느낀 점을 작성해주세요."
           required
         ></textarea>
       </div>
@@ -910,13 +942,13 @@
     </div>
   </div>
 
-  <!-- 공통 탐구 기록 -->
+  <!-- 마무리 작성 -->
   <section class="my-common-record-card">
     <div class="my-common-record-heading">
       <div>
         <span>📚</span>
 
-        <h3>공통 탐구 기록</h3>
+        <h3>마무리 작성</h3>
       </div>
 
       <button
@@ -930,15 +962,31 @@
 
     <div class="my-common-record-content">
       <article>
-        <strong>참고자료 및 출처</strong>
+        <strong>1. 5종의 식물을 선택한 이유</strong>
 
-        <p id="myReferencesContent">
+        <p id="mySelectionReasonContent">
           아직 작성되지 않았습니다.
         </p>
       </article>
 
       <article>
-        <strong>느낀 점</strong>
+        <strong>2. 선택하여 탐구하고 싶은 식물</strong>
+
+        <p id="myInquiryPlantContent">
+          아직 작성되지 않았습니다.
+        </p>
+      </article>
+
+      <article>
+        <strong>3. 탐구하고 싶은 주제</strong>
+
+        <p id="myInquiryTopicContent">
+          아직 작성되지 않았습니다.
+        </p>
+      </article>
+
+      <article>
+        <strong>4. 활동을 하면서 느낀 점</strong>
 
         <p id="myReflectionContent">
           아직 작성되지 않았습니다.
@@ -1010,15 +1058,25 @@
     ></div>
 
     <section class="teacher-common-detail">
-      <h3>📚 공통 탐구 기록</h3>
+      <h3>📚 마무리 작성</h3>
 
       <article>
-        <strong>참고자료 및 출처</strong>
-        <p id="teacherSubmissionReferences"></p>
+        <strong>1. 5종의 식물을 선택한 이유</strong>
+        <p id="teacherSubmissionSelectionReason"></p>
       </article>
 
       <article>
-        <strong>느낀 점</strong>
+        <strong>2. 선택하여 탐구하고 싶은 식물</strong>
+        <p id="teacherSubmissionInquiryPlant"></p>
+      </article>
+
+      <article>
+        <strong>3. 탐구하고 싶은 주제</strong>
+        <p id="teacherSubmissionInquiryTopic"></p>
+      </article>
+
+      <article>
+        <strong>4. 활동을 하면서 느낀 점</strong>
         <p id="teacherSubmissionReflection"></p>
       </article>
     </section>
