@@ -901,8 +901,15 @@ function showSpecies(index) {
       "마지막 단계";
   } else {
     nextSpeciesButton.textContent =
-      "다음 식물 →";
+      `식물 ${index + 1} 저장 후 다음 →`;
   }
+
+  // 식물 1~5에서는 오른쪽의 저장 후 다음 버튼을 사용하고,
+  // 마무리 작성 화면에서만 최종 제출 버튼을 표시한다.
+  submitPlantButton.classList.toggle(
+    "hidden",
+    index !== speciesCount
+  );
 
   window.scrollTo({
     top: plantFormSection.offsetTop,
@@ -920,18 +927,199 @@ previousSpeciesButton.addEventListener(
   }
 );
 
+// 현재 화면의 식물 5종 기록을 요청 형식으로 모음
+function collectPlantRecords() {
+  const plants = [];
+
+  for (
+    let speciesNumber = 1;
+    speciesNumber <= speciesCount;
+    speciesNumber += 1
+  ) {
+    plants.push({
+      speciesNumber: speciesNumber,
+      koreanName: document.getElementById(
+        `species${speciesNumber}KoreanName`
+      ).value.trim(),
+      scientificName: document.getElementById(
+        `species${speciesNumber}ScientificName`
+      ).value.trim(),
+      discoveryDate: document.getElementById(
+        `species${speciesNumber}Date`
+      ).value,
+      discoveryPlace: document.getElementById(
+        `species${speciesNumber}Place`
+      ).value.trim(),
+      habitat: document.getElementById(
+        `species${speciesNumber}Habitat`
+      ).value.trim(),
+      features: document.getElementById(
+        `species${speciesNumber}Features`
+      ).value.trim(),
+      references: document.getElementById(
+        `species${speciesNumber}References`
+      ).value.trim()
+    });
+  }
+
+  return plants;
+}
+
+function createSubmissionRequest() {
+  return {
+    sessionToken: currentStudentToken,
+    selectionReason: selectionReasonInput.value.trim(),
+    inquiryPlant: inquiryPlantInput.value.trim(),
+    inquiryTopic: inquiryTopicInput.value.trim(),
+    reflection: reflectionInput.value.trim(),
+    plants: collectPlantRecords()
+  };
+}
+
+function setSpeciesSavingState(saving) {
+  previousSpeciesButton.disabled =
+    saving || currentSpeciesIndex === 0;
+  nextSpeciesButton.disabled =
+    saving || currentSpeciesIndex === speciesCount;
+
+  document.querySelectorAll(".species-tab").forEach(
+    function (tab) {
+      tab.disabled = saving;
+    }
+  );
+}
+
+// 현재 식물의 글과 사진 3장만 저장하고 다음 단계로 이동
+async function saveCurrentSpeciesAndContinue() {
+  if (!currentStudent || !currentStudentToken) {
+    window.alert(
+      "로그인 정보가 만료되었습니다. 다시 로그인해주세요."
+    );
+    showOnlySection(loginSection);
+    return;
+  }
+
+  const speciesIndex = currentSpeciesIndex;
+  const speciesNumber = speciesIndex + 1;
+
+  if (!isSpeciesReadyToSave(speciesIndex)) {
+    window.alert(
+      `식물 ${speciesNumber}의 모든 내용과 잎·줄기·전체 사진 3장을 입력해주세요.`
+    );
+    return;
+  }
+
+  const originalButtonText =
+    nextSpeciesButton.textContent;
+
+  setSpeciesSavingState(true);
+  hideMessage(plantFormMessage);
+
+  try {
+    nextSpeciesButton.textContent =
+      `식물 ${speciesNumber} 내용 저장 중...`;
+
+    const submissionRequest =
+      createSubmissionRequest();
+
+    const result =
+      await callPlantGuideApiWithRetry(
+        "saveSubmission",
+        submissionRequest
+      );
+
+    if (!result.success) {
+      throw new Error(
+        result.message ||
+        `식물 ${speciesNumber}의 내용을 저장하지 못했습니다.`
+      );
+    }
+
+    temporaryLastSavedAt =
+      result.savedAt
+        ? new Date(result.savedAt)
+        : new Date();
+
+    await uploadSelectedPlantPhotos(
+      function (current, total) {
+        nextSpeciesButton.textContent =
+          `식물 ${speciesNumber} 사진 저장 중 ${current} / ${total}`;
+      },
+      speciesNumber
+    );
+
+    // 사진 저장 후 완료 상태와 교사 대시보드 수를 다시 계산
+    const finalResult =
+      await callPlantGuideApiWithRetry(
+        "saveSubmission",
+        submissionRequest
+      );
+
+    if (!finalResult.success) {
+      throw new Error(
+        finalResult.message ||
+        "사진 저장 결과를 확인하지 못했습니다."
+      );
+    }
+
+    temporaryLastSavedAt =
+      finalResult.savedAt
+        ? new Date(finalResult.savedAt)
+        : new Date();
+
+    updateSpeciesProgress();
+
+    if (countSelectedPhotos() > 0) {
+      plantFormHasUnsavedChanges = true;
+      saveLocalPlantDraft();
+    } else {
+      plantFormHasUnsavedChanges = false;
+      clearLocalPlantDraft();
+    }
+
+    showSpecies(speciesIndex + 1);
+
+    window.alert(
+      `식물 ${speciesNumber}의 내용과 사진 3장이 저장되었습니다.`
+    );
+  } catch (error) {
+    console.error(error);
+    plantFormHasUnsavedChanges = true;
+    saveLocalPlantDraft();
+
+    const message =
+      error instanceof Error && error.message
+        ? error.message
+        : "저장 중 오류가 발생했습니다.";
+
+    showMessage(
+      plantFormMessage,
+      `식물 ${speciesNumber} 저장이 완료되지 않았습니다. ${message}`,
+      "error"
+    );
+
+    window.alert(
+      `식물 ${speciesNumber} 저장이 완료되지 않았습니다.\n\n${message}\n\n현재 화면에서 저장 버튼을 다시 눌러주세요.`
+    );
+  } finally {
+    nextSpeciesButton.textContent =
+      originalButtonText;
+    setSpeciesSavingState(false);
+  }
+}
+
 // 다음 식물
 nextSpeciesButton.addEventListener(
   "click",
-  function () {
+  async function () {
     if (currentSpeciesIndex < speciesCount) {
-  showSpecies(currentSpeciesIndex + 1);
-}
+      await saveCurrentSpeciesAndContinue();
+    }
   }
 );
 
 // 작성 완료 여부
-function isSpeciesComplete(index) {
+function isSpeciesReadyToSave(index) {
   const panel =
     document.querySelector(
       `[data-species-panel="${index}"]`
@@ -984,6 +1172,37 @@ function isSpeciesComplete(index) {
   );
 
   return allTextCompleted && allPhotosCompleted;
+}
+
+// 서버에 글과 사진 3장이 모두 저장된 식물인지 확인
+function isSpeciesComplete(index) {
+  const panel =
+    document.querySelector(
+      `[data-species-panel="${index}"]`
+    );
+
+  const allTextCompleted =
+    Array.from(
+      panel.querySelectorAll(
+        "[data-species-required]"
+      )
+    ).every(function (field) {
+      return field.value.trim() !== "";
+    });
+
+  const allPhotosSaved =
+    ["Leaf", "Stem", "Whole"].every(
+      function (photoType) {
+        return savedPhotoMap.has(
+          getSavedPhotoKey(
+            index + 1,
+            photoType
+          )
+        );
+      }
+    );
+
+  return allTextCompleted && allPhotosSaved;
 }
 
 // 진행률 갱신
@@ -1103,53 +1322,7 @@ plantRecordForm.addEventListener(
       return;
     }
 
-    const plants = [];
-
-    for (
-      let speciesNumber = 1;
-      speciesNumber <= speciesCount;
-      speciesNumber += 1
-    ) {
-      plants.push({
-        speciesNumber:
-          speciesNumber,
-
-        koreanName:
-          document.getElementById(
-            `species${speciesNumber}KoreanName`
-          ).value.trim(),
-
-        scientificName:
-          document.getElementById(
-            `species${speciesNumber}ScientificName`
-          ).value.trim(),
-
-        discoveryDate:
-          document.getElementById(
-            `species${speciesNumber}Date`
-          ).value,
-
-        discoveryPlace:
-          document.getElementById(
-            `species${speciesNumber}Place`
-          ).value.trim(),
-
-        habitat:
-          document.getElementById(
-            `species${speciesNumber}Habitat`
-          ).value.trim(),
-
-        features:
-          document.getElementById(
-            `species${speciesNumber}Features`
-          ).value.trim(),
-
-        references:
-          document.getElementById(
-            `species${speciesNumber}References`
-          ).value.trim()
-      });
-    }
+    const plants = collectPlantRecords();
 
     const completedPlantCount =
       plants.filter(function (plant) {
@@ -1164,9 +1337,27 @@ plantRecordForm.addEventListener(
         );
       }).length;
 
+    const allPhotosSaved =
+      Array.from(
+        { length: speciesCount },
+        function (_, speciesIndex) {
+          return ["Leaf", "Stem", "Whole"].every(
+            function (photoType) {
+              return savedPhotoMap.has(
+                getSavedPhotoKey(
+                  speciesIndex + 1,
+                  photoType
+                )
+              );
+            }
+          );
+        }
+      ).every(Boolean);
+
     const everythingCompleted =
       completedPlantCount ===
         speciesCount &&
+      allPhotosSaved &&
       selectionReasonInput.value.trim() !==
         "" &&
       inquiryPlantInput.value.trim() !==
@@ -1176,16 +1367,18 @@ plantRecordForm.addEventListener(
       reflectionInput.value.trim() !==
         "";
 
-    if (!everythingCompleted) {
-      const shouldSave =
-        window.confirm(
-          `현재 완전히 작성된 식물은 ${completedPlantCount}종입니다.\n\n` +
-          "작성되지 않은 항목이 있지만 현재 내용까지 저장하시겠습니까?"
-        );
+    if (countSelectedPhotos() > 0) {
+      window.alert(
+        "아직 저장하지 않은 식물 사진이 있습니다. 해당 식물 탭으로 돌아가 ‘저장 후 다음’ 버튼을 눌러주세요."
+      );
+      return;
+    }
 
-      if (!shouldSave) {
-        return;
-      }
+    if (!everythingCompleted) {
+      window.alert(
+        "식물 5종의 내용과 사진을 식물별로 모두 저장하고 마무리 문항 4개를 작성해주세요."
+      );
+      return;
     }
 
     const originalButtonText =
@@ -1197,25 +1390,8 @@ plantRecordForm.addEventListener(
 
     hideMessage(plantFormMessage);
 
-    const submissionRequest = {
-      sessionToken:
-        currentStudentToken,
-
-      selectionReason:
-        selectionReasonInput.value.trim(),
-
-      inquiryPlant:
-        inquiryPlantInput.value.trim(),
-
-      inquiryTopic:
-        inquiryTopicInput.value.trim(),
-
-      reflection:
-        reflectionInput.value.trim(),
-
-      plants:
-        plants
-    };
+    const submissionRequest =
+      createSubmissionRequest();
 
     let textSaved = false;
 
@@ -1249,50 +1425,17 @@ plantRecordForm.addEventListener(
           ? new Date(result.savedAt)
           : new Date();
 
-      const selectedPhotoCount =
-        countSelectedPhotos();
-
-      if (selectedPhotoCount > 0) {
-        await uploadSelectedPlantPhotos(
-          function (current, total) {
-            submitPlantButton.textContent =
-              `사진 업로드 중 ${current} / ${total}`;
-          }
-        );
-
-        // 사진 수가 교사 화면에 즉시 반영되도록
-        // 사진 완료 후 제출 현황만 한 번 더 갱신
-        const finalResult =
-          await callPlantGuideApiWithRetry(
-            "saveSubmission",
-            submissionRequest
-          );
-
-        if (finalResult.success) {
-          temporaryLastSavedAt =
-            finalResult.savedAt
-              ? new Date(finalResult.savedAt)
-              : new Date();
-        }
-      }
-
-      // 글과 선택한 사진이 모두 저장된 뒤에만
-      // 최종 저장 완료 상태로 전환한다.
       plantFormHasUnsavedChanges = false;
       clearLocalPlantDraft();
 
       showMessage(
         plantFormMessage,
-        selectedPhotoCount > 0
-          ? "내용과 사진이 모두 저장되었습니다."
-          : "내용이 저장되었습니다.",
+        "식물도감 최종 제출이 완료되었습니다.",
         "success"
       );
 
       window.alert(
-        selectedPhotoCount > 0
-          ? "내용과 사진이 모두 저장되었습니다."
-          : "내용이 저장되었습니다."
+        "식물 5종의 기록과 마무리 작성이 모두 저장되었습니다."
       );
 
       updateSpeciesProgress();
@@ -1300,20 +1443,17 @@ plantRecordForm.addEventListener(
       console.error(error);
 
       if (textSaved) {
-        // 사진 업로드가 끝나지 않은 경우에는 작성 중 상태와
-        // 브라우저 임시 저장을 유지한다. 다시 저장하면 이미
-        // 성공한 사진은 건너뛰고 남은 사진만 이어서 업로드한다.
         plantFormHasUnsavedChanges = true;
         saveLocalPlantDraft();
 
         showMessage(
           plantFormMessage,
-          "저장이 완료되지 않았습니다. 저장 버튼을 다시 눌러주세요.",
+          "최종 제출 상태를 확인하지 못했습니다. 버튼을 다시 눌러주세요.",
           "error"
         );
 
         window.alert(
-          "저장이 완료되지 않았습니다. 인터넷 연결을 확인한 뒤 저장 버튼을 다시 눌러주세요."
+          "최종 제출 상태를 확인하지 못했습니다. 잠시 후 다시 눌러주세요."
         );
       } else {
         showMessage(
@@ -3255,7 +3395,8 @@ function countSelectedPhotos() {
 
 // 새로 선택한 사진을 순서대로 업로드
 async function uploadSelectedPlantPhotos(
-  progressCallback
+  progressCallback,
+  onlySpeciesNumber = null
 ) {
   const photoTypes = [
     "Leaf",
@@ -3270,6 +3411,13 @@ async function uploadSelectedPlantPhotos(
     speciesNumber <= speciesCount;
     speciesNumber += 1
   ) {
+    if (
+      onlySpeciesNumber !== null &&
+      speciesNumber !== Number(onlySpeciesNumber)
+    ) {
+      continue;
+    }
+
     photoTypes.forEach(function (photoType) {
       const input =
         document.getElementById(
@@ -3312,10 +3460,18 @@ async function uploadSelectedPlantPhotos(
       );
     }
 
-    const compressed =
-      await compressPlantPhoto(
-        item.file
+    let compressed;
+
+    try {
+      compressed =
+        await compressPlantPhoto(
+          item.file
+        );
+    } catch (error) {
+      throw new Error(
+        `식물 ${item.speciesNumber}의 ${getSavedPhotoLabel(item.photoType)}을(를) 처리하지 못했습니다.`
       );
+    }
 
     const result =
       await callPlantGuideApiWithRetry(
@@ -3343,8 +3499,8 @@ async function uploadSelectedPlantPhotos(
 
     if (!result.success) {
       throw new Error(
-        result.message ||
-        "사진을 저장하지 못했습니다."
+        `식물 ${item.speciesNumber}의 ${getSavedPhotoLabel(item.photoType)} 저장 실패: ` +
+        (result.message || "서버 응답을 받지 못했습니다.")
       );
     }
 
@@ -3383,7 +3539,9 @@ function compressPlantPhoto(file) {
 
     image.onload = function () {
       try {
-        const maximumSize = 1400;
+        // 모바일 업로드가 끊기지 않도록 긴 변을 줄이고
+        // 한 장씩 가볍게 전송한다.
+        const maximumSize = 1200;
 
         let width =
           image.naturalWidth;
@@ -3476,7 +3634,7 @@ function compressPlantPhoto(file) {
             reader.readAsDataURL(blob);
           },
           "image/jpeg",
-          0.78
+          0.72
         );
       } catch (error) {
         URL.revokeObjectURL(
